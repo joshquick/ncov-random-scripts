@@ -20,23 +20,29 @@ def get_alignment_parasail(reference_genome, input_genome):
     
     # the dna full matrix supports ambiguity codes, although "N"s are not given free mismatches as we might like
     # the alignments appear good enough for our purpose however
-    result = parasail.nw_trace_striped_32(input_genome.sequence, reference_genome.sequence, 10, 1, parasail.dnafull)
+    # do not penalise gaps at end of database
+    result = parasail.sg_dx_trace_striped_32(input_genome.sequence, reference_genome.sequence, 10, 1, parasail.dnafull)
     traceback = result.traceback
 
     return traceback.ref, traceback.comp, traceback.query
 
 def alignment2vcf(reference_name, reference_aligned, query_aligned):
 
-    reference_position = 0
-    query_position = 0
-    
     print("##fileformat=VCFv4.2")
     print('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">')
+    print("##contig=<ID=%s>" % (reference_name)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample")
 
 
-    i = 0
-    n = len(reference_aligned)
+    # only write out out records for overlapping region
+    q_start = len(query_aligned) - len(query_aligned.lstrip('-'))
+    q_end = len(query_aligned) - (len(query_aligned) - len(query_aligned.rstrip('-')))
+
+    i = q_start
+    query_position = q_start
+    reference_position = q_start
+    n = q_end
+
     while i < n:
         if query_aligned[i] == reference_aligned[i]:
             reference_position += 1
